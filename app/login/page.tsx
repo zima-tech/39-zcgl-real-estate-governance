@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "@/app/login/_components/login-form";
 import { getAdminSession } from "@/lib/admin/auth";
 import { adminRoutes } from "@/lib/admin/routes";
-import { defaultDevelopmentRootPassword } from "@/lib/admin/system-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,9 +21,7 @@ export default async function LoginPage() {
   }
 
   const developmentPasswordHint =
-    process.env.NODE_ENV === "development" && !process.env.ADMIN_ROOT_PASSWORD
-      ? defaultDevelopmentRootPassword
-      : null;
+    process.env.NODE_ENV === "development" ? "admin" : null;
 
   return (
     <main className="login-root">

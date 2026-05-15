@@ -65,7 +65,7 @@ export function LoginForm({ developmentPasswordHint }: LoginFormProps) {
 
         {developmentPasswordHint ? (
           <div className="login-credential-tags" aria-label="开发环境默认账号">
-            <Tag color="blue">账号 root</Tag>
+            <Tag color="blue">账号 admin</Tag>
             <Tag color="green">密码 {developmentPasswordHint}</Tag>
           </div>
         ) : null}
@@ -83,7 +83,7 @@ export function LoginForm({ developmentPasswordHint }: LoginFormProps) {
           form={form}
           layout="vertical"
           initialValues={{
-            username: "root",
+            username: "admin",
           }}
           onFinish={handleSubmit}
           requiredMark={false}
@@ -93,7 +93,7 @@ export function LoginForm({ developmentPasswordHint }: LoginFormProps) {
             name="username"
             rules={[{ required: true, message: "请输入账号名" }]}
           >
-            <Input autoComplete="username" placeholder="root" size="large" />
+            <Input autoComplete="username" placeholder="admin" size="large" />
           </Form.Item>
 
           <Form.Item
