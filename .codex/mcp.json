@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "antd": {
+      "command": "antd",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}
