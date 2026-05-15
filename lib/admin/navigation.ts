@@ -45,10 +45,28 @@ export const adminModules: AdminModule[] = [
     href: adminRoutes.governance,
     children: [
       {
+        key: "overview",
+        label: "数据总览",
+        href: adminRoutes.governanceOverviewPage,
+        icon: "chart",
+      },
+      {
+        key: "assets",
+        label: "不动产管理",
+        href: adminRoutes.governanceAssetsPage,
+        icon: "building",
+      },
+      {
+        key: "enterprise",
+        label: "企业治理",
+        href: adminRoutes.governanceEnterprisePage,
+        icon: "database",
+      },
+      {
         key: "records",
         label: "业务记录",
         href: adminRoutes.governance,
-        icon: "database",
+        icon: "fileCheck",
       },
       {
         key: "templates",

@@ -6,7 +6,10 @@ import {
 import type {
   CreateGovernanceIntakeInput,
   CreateGovernanceUploadInput,
+  GovernanceAssetLedgerResponse,
   GovernanceDashboard,
+  GovernanceEnterpriseAnalysisResponse,
+  GovernanceTodoItem,
   GovernanceProcessor,
   GovernanceRecordDetail,
   GovernanceRecordSummary,
@@ -99,6 +102,25 @@ export const adminClient = {
     return requestJson<{
       records: GovernanceRecordSummary[];
     }>(adminApiRoutes.governanceRecords);
+  },
+
+  getRealEstateAssetLedger() {
+    return requestJson<GovernanceAssetLedgerResponse>(
+      adminApiRoutes.governanceAssets,
+    );
+  },
+
+  getEnterpriseGovernanceAnalysis() {
+    return requestJson<GovernanceEnterpriseAnalysisResponse>(
+      adminApiRoutes.governanceEnterpriseAnalysis,
+    );
+  },
+
+  getGovernanceHomepageOverview() {
+    return requestJson<{
+      dashboard: GovernanceDashboard;
+      todos: GovernanceTodoItem[];
+    }>(adminApiRoutes.governanceHomepageOverview);
   },
 
   getGovernanceDashboard() {

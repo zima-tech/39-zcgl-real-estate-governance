@@ -51,13 +51,156 @@ export type GovernanceWorkflowAction =
   | "transfer";
 
 export type GovernanceNormalizedFields = {
+  assessedValueTenThousand?: number;
   businessType: string;
   contactPhone?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  } | null;
   entityName: string;
+  enterpriseComplianceStatus?: GovernanceEnterpriseComplianceStatus;
+  enterpriseGovernanceRating?: string;
+  enterpriseGovernanceScore?: number;
+  enterpriseRegistrationNumber?: string;
+  enterpriseRemediationFocus?: string[];
+  leaseExpiryDate?: string;
+  locationLabel?: string;
   ownerName: string;
+  ownershipStatus?: string;
   propertyAddress: string;
+  propertyAreaSqm?: number;
+  propertyNumber?: string;
+  propertyType?: string;
   registrationNo: string;
+  rentOverdueAmountTenThousand?: number;
   riskNote?: string;
+  tenantName?: string;
+};
+
+export type GovernanceAssetRiskLevel = "low" | "medium" | "high" | "critical";
+
+export type GovernanceLeaseExpiryStatus =
+  | "active"
+  | "expired"
+  | "expiring_soon"
+  | "not_applicable";
+
+export type GovernanceEnterpriseComplianceStatus =
+  | "attention"
+  | "blocked"
+  | "normal"
+  | "remediation";
+
+export type GovernanceAssetLedgerItem = GovernanceRecordSummary & {
+  assessedValueTenThousand: number;
+  coordinateStatus: "address_only" | "coordinates";
+  coordinates: GovernanceNormalizedFields["coordinates"];
+  leaseExpiryDate: string | null;
+  leaseExpiryStatus: GovernanceLeaseExpiryStatus;
+  locationLabel: string;
+  ownershipRiskIndicator: {
+    label: string;
+    source: "mock-derived" | "rule-based";
+  };
+  ownershipStatus: string;
+  propertyAreaSqm: number;
+  propertyNumber: string;
+  propertyType: string;
+  rentOverdueIndicator: {
+    amountTenThousand: number;
+    label: string;
+    source: "mock-derived" | "rule-based";
+  };
+  riskLevel: GovernanceAssetRiskLevel;
+  tenantName: string;
+  valueAssessment: {
+    label: string;
+    source: "mock-derived" | "rule-based";
+    sourceFields: string[];
+  };
+  workflowStatus: GovernanceRecordStatus;
+};
+
+export type GovernanceMapDistributionGroup = {
+  addressOnlyCount: number;
+  coordinateCount: number;
+  locationLabel: string;
+  ownershipStatusCounts: Record<string, number>;
+  recordCount: number;
+  riskCounts: Record<GovernanceAssetRiskLevel, number>;
+};
+
+export type GovernanceAssetLedgerFilters = {
+  leaseExpiryStatuses: GovernanceLeaseExpiryStatus[];
+  ownershipStatuses: string[];
+  propertyTypes: string[];
+  riskLevels: GovernanceAssetRiskLevel[];
+  tenants: string[];
+  workflowStatuses: GovernanceRecordStatus[];
+};
+
+export type GovernanceAssetLedgerResponse = {
+  assets: GovernanceAssetLedgerItem[];
+  filters: GovernanceAssetLedgerFilters;
+  mapDistribution: GovernanceMapDistributionGroup[];
+};
+
+export type GovernanceEnterpriseLedgerItem = GovernanceRecordSummary & {
+  approvalState: string;
+  completenessStatus: "complete" | "missing_required_fields";
+  complianceStatus: GovernanceEnterpriseComplianceStatus;
+  duplicateFindingCount: number;
+  governanceRating: string;
+  governanceScore: number;
+  mockAiIndicatorCount: number;
+  openWarningCount: number;
+  registrationNumber: string;
+  remediationFocus: string[];
+  responsibleParty: string;
+  workflowState: string;
+};
+
+export type GovernanceEnterpriseAnalysis = {
+  attentionRecords: number;
+  averageScore: number;
+  completeRecords: number;
+  duplicateFindings: number;
+  mockAiIndicators: number;
+  openWarnings: number;
+  pendingApproval: number;
+  remediationRecords: number;
+  totalEnterprises: number;
+};
+
+export type GovernanceRemediationFocusGroup = {
+  items: Array<{
+    source: string;
+    summary: string;
+  }>;
+  recordId: string;
+  recordTitle: string;
+};
+
+export type GovernanceEnterpriseAnalysisResponse = {
+  analysis: GovernanceEnterpriseAnalysis;
+  enterprises: GovernanceEnterpriseLedgerItem[];
+  remediationFocus: GovernanceRemediationFocusGroup[];
+};
+
+export type GovernanceTodoItem = {
+  action: string;
+  priority: "critical" | "high" | "medium" | "normal";
+  recordId: string;
+  recordTitle: string;
+  sourceType:
+    | "expiring_lease"
+    | "missing_field"
+    | "mock_ai_review"
+    | "reminder"
+    | "risk_warning"
+    | "workflow";
+  summary: string;
 };
 
 export type GovernanceRecordSummary = {
@@ -216,8 +359,14 @@ export type GovernanceRecordDetail = GovernanceRecordSummary & {
 export type GovernanceDashboard = {
   activeWarnings: number;
   aiJobsProcessing: number;
+  assets: number;
+  enterpriseRecords: number;
+  expiringLeases: number;
+  missingRequiredFields: number;
+  mockAiReviewItems: number;
   records: number;
   templateCount: number;
+  todoItems: number;
   uploads: number;
   workflowPending: number;
 };
@@ -285,12 +434,30 @@ type ScenarioBundle = {
 const identityFields = ["entityName", "registrationNo"] as const;
 
 const baseFields: GovernanceNormalizedFields = {
+  assessedValueTenThousand: 12800,
   businessType: "不动产治理备案",
   contactPhone: "13800000000",
+  coordinates: {
+    lat: 31.2397,
+    lng: 121.4998,
+  },
   entityName: "青岚置业有限公司",
+  enterpriseComplianceStatus: "normal",
+  enterpriseGovernanceRating: "A",
+  enterpriseGovernanceScore: 92,
+  enterpriseRegistrationNumber: "91310000MA1K00001A",
+  enterpriseRemediationFocus: [],
+  leaseExpiryDate: "2026-08-31",
+  locationLabel: "上海浦东",
   ownerName: "周序",
+  ownershipStatus: "自持",
   propertyAddress: "上海市浦东新区银城路 88 号 18 层",
+  propertyAreaSqm: 1860,
+  propertyNumber: "RE-2026-001",
+  propertyType: "办公",
   registrationNo: "GOV-2026-0514",
+  rentOverdueAmountTenThousand: 0,
+  tenantName: "青岚城市服务",
 };
 
 export const governanceMockScenarios: Record<
@@ -775,15 +942,31 @@ function normalizeGovernanceFields(
   };
 
   return {
+    assessedValueTenThousand: normalized.assessedValueTenThousand,
     businessType:
       normalized.businessType?.trim() ||
       `${getSourceTypeLabel(sourceType)}业务治理`,
     contactPhone: normalized.contactPhone?.trim() || undefined,
+    coordinates: normalized.coordinates ?? null,
     entityName: normalized.entityName?.trim() || "未命名治理主体",
+    enterpriseComplianceStatus: normalized.enterpriseComplianceStatus,
+    enterpriseGovernanceRating: normalized.enterpriseGovernanceRating?.trim(),
+    enterpriseGovernanceScore: normalized.enterpriseGovernanceScore,
+    enterpriseRegistrationNumber:
+      normalized.enterpriseRegistrationNumber?.trim(),
+    enterpriseRemediationFocus: normalized.enterpriseRemediationFocus,
+    leaseExpiryDate: normalized.leaseExpiryDate?.trim(),
+    locationLabel: normalized.locationLabel?.trim(),
     ownerName: normalized.ownerName?.trim() || "待补充",
+    ownershipStatus: normalized.ownershipStatus?.trim(),
     propertyAddress: normalized.propertyAddress?.trim() || "待补充",
+    propertyAreaSqm: normalized.propertyAreaSqm,
+    propertyNumber: normalized.propertyNumber?.trim(),
+    propertyType: normalized.propertyType?.trim(),
     registrationNo: normalized.registrationNo?.trim() || "待补充",
+    rentOverdueAmountTenThousand: normalized.rentOverdueAmountTenThousand,
     riskNote: normalized.riskNote?.trim() || undefined,
+    tenantName: normalized.tenantName?.trim(),
   };
 }
 
@@ -817,6 +1000,358 @@ function validateRecordFields(fields: GovernanceNormalizedFields) {
   if (Object.keys(fieldErrors).length) {
     throw new AdminValidationError("治理记录字段校验未通过。", fieldErrors);
   }
+}
+
+type GovernanceRecordRow = typeof governanceRecordsTable.$inferSelect;
+type GovernanceWorkflowInstanceRow =
+  typeof governanceWorkflowInstancesTable.$inferSelect;
+
+function getPersistedNormalizedFields(record: GovernanceRecordRow) {
+  const scenarioId = isGovernanceMockScenarioId(record.mockScenarioId)
+    ? record.mockScenarioId
+    : "normal-success";
+
+  return normalizeGovernanceFields(
+    record.sourceType,
+    scenarioId,
+    record.normalizedFields as Partial<GovernanceNormalizedFields>,
+  );
+}
+
+function getLeaseExpiryStatus(
+  leaseExpiryDate?: string | null,
+): GovernanceLeaseExpiryStatus {
+  if (!leaseExpiryDate) {
+    return "not_applicable";
+  }
+
+  const expiryTime = new Date(leaseExpiryDate).getTime();
+
+  if (Number.isNaN(expiryTime)) {
+    return "not_applicable";
+  }
+
+  const today = new Date();
+  const daysUntilExpiry = Math.ceil(
+    (expiryTime - today.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  if (daysUntilExpiry < 0) {
+    return "expired";
+  }
+
+  if (daysUntilExpiry <= 90) {
+    return "expiring_soon";
+  }
+
+  return "active";
+}
+
+function getRiskLevel(input: {
+  fields: GovernanceNormalizedFields;
+  record: GovernanceRecordRow;
+  warnings: Array<typeof governanceRiskWarningsTable.$inferSelect>;
+}): GovernanceAssetRiskLevel {
+  if (input.fields.riskNote?.trim()) {
+    return "high";
+  }
+
+  if (input.warnings.some((warning) => warning.severity === "critical")) {
+    return "critical";
+  }
+
+  if (input.warnings.some((warning) => warning.severity === "warning")) {
+    return "high";
+  }
+
+  if (
+    input.record.status === "risk_review_required" ||
+    input.record.status === "escalated" ||
+    input.record.status === "manual_correction_required"
+  ) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function getValueAssessment(input: {
+  assessedValueTenThousand: number;
+  areaSqm: number;
+  riskLevel: GovernanceAssetRiskLevel;
+}) {
+  const valuePerSqm =
+    input.areaSqm > 0
+      ? Math.round((input.assessedValueTenThousand * 10_000) / input.areaSqm)
+      : 0;
+  const label =
+    input.riskLevel === "critical" || input.riskLevel === "high"
+      ? "规则估值需复核"
+      : valuePerSqm > 70_000
+        ? "规则估值偏高"
+        : "规则估值正常";
+
+  return {
+    label,
+    source: "rule-based" as const,
+    sourceFields: ["评估值", "建筑面积", "风险级别"],
+  };
+}
+
+function toAssetLedgerItem(input: {
+  activeWarningCount: number;
+  pendingReminder?: string | null;
+  record: GovernanceRecordRow;
+  uploadCount: number;
+  warnings: Array<typeof governanceRiskWarningsTable.$inferSelect>;
+}): GovernanceAssetLedgerItem {
+  const fields = getPersistedNormalizedFields(input.record);
+  const leaseExpiryDate = fields.leaseExpiryDate ?? null;
+  const leaseExpiryStatus = getLeaseExpiryStatus(leaseExpiryDate);
+  const riskLevel = getRiskLevel({
+    fields,
+    record: input.record,
+    warnings: input.warnings,
+  });
+  const propertyAreaSqm = fields.propertyAreaSqm ?? 0;
+  const assessedValueTenThousand = fields.assessedValueTenThousand ?? 0;
+  const rentOverdueAmountTenThousand = fields.rentOverdueAmountTenThousand ?? 0;
+
+  return {
+    ...toRecordSummary({
+      ...input.record,
+      activeWarningCount: input.activeWarningCount,
+      pendingReminder: input.pendingReminder ?? null,
+      uploadCount: input.uploadCount,
+    }),
+    assessedValueTenThousand,
+    coordinateStatus: fields.coordinates ? "coordinates" : "address_only",
+    coordinates: fields.coordinates ?? null,
+    leaseExpiryDate,
+    leaseExpiryStatus,
+    locationLabel: fields.locationLabel ?? fields.propertyAddress,
+    ownershipRiskIndicator: {
+      label:
+        fields.ownershipStatus === "共有" || riskLevel === "critical"
+          ? "权属需复核"
+          : "权属规则正常",
+      source: "rule-based",
+    },
+    ownershipStatus: fields.ownershipStatus ?? "待补充",
+    propertyAreaSqm,
+    propertyNumber: fields.propertyNumber ?? fields.registrationNo,
+    propertyType: fields.propertyType ?? "综合",
+    rentOverdueIndicator: {
+      amountTenThousand: rentOverdueAmountTenThousand,
+      label:
+        rentOverdueAmountTenThousand > 0
+          ? "模拟应收逾期"
+          : "模拟应收正常",
+      source: "mock-derived",
+    },
+    riskLevel,
+    tenantName: fields.tenantName ?? "自用",
+    valueAssessment: getValueAssessment({
+      areaSqm: propertyAreaSqm,
+      assessedValueTenThousand,
+      riskLevel,
+    }),
+    workflowStatus: input.record.status,
+  };
+}
+
+function incrementCount<T extends string>(
+  bucket: Record<T, number>,
+  key: T,
+  amount = 1,
+) {
+  bucket[key] = (bucket[key] ?? 0) + amount;
+}
+
+function buildMapDistribution(
+  assets: GovernanceAssetLedgerItem[],
+): GovernanceMapDistributionGroup[] {
+  const groupByLocation = new Map<string, GovernanceMapDistributionGroup>();
+
+  for (const asset of assets) {
+    const group =
+      groupByLocation.get(asset.locationLabel) ??
+      ({
+        addressOnlyCount: 0,
+        coordinateCount: 0,
+        locationLabel: asset.locationLabel,
+        ownershipStatusCounts: {},
+        recordCount: 0,
+        riskCounts: {
+          critical: 0,
+          high: 0,
+          low: 0,
+          medium: 0,
+        },
+      } satisfies GovernanceMapDistributionGroup);
+
+    group.recordCount += 1;
+    if (asset.coordinateStatus === "coordinates") {
+      group.coordinateCount += 1;
+    } else {
+      group.addressOnlyCount += 1;
+    }
+    incrementCount(group.riskCounts, asset.riskLevel);
+    group.ownershipStatusCounts[asset.ownershipStatus] =
+      (group.ownershipStatusCounts[asset.ownershipStatus] ?? 0) + 1;
+    groupByLocation.set(asset.locationLabel, group);
+  }
+
+  return Array.from(groupByLocation.values()).sort(
+    (left, right) => right.recordCount - left.recordCount,
+  );
+}
+
+function buildAssetFilterOptions(
+  assets: GovernanceAssetLedgerItem[],
+): GovernanceAssetLedgerFilters {
+  return {
+    leaseExpiryStatuses: Array.from(
+      new Set(assets.map((asset) => asset.leaseExpiryStatus)),
+    ),
+    ownershipStatuses: Array.from(
+      new Set(assets.map((asset) => asset.ownershipStatus)),
+    ),
+    propertyTypes: Array.from(new Set(assets.map((asset) => asset.propertyType))),
+    riskLevels: Array.from(new Set(assets.map((asset) => asset.riskLevel))),
+    tenants: Array.from(new Set(assets.map((asset) => asset.tenantName))),
+    workflowStatuses: Array.from(
+      new Set(assets.map((asset) => asset.workflowStatus)),
+    ),
+  };
+}
+
+function hasRequiredFieldGap(fields: GovernanceNormalizedFields) {
+  return (
+    hasMissingValue(fields.registrationNo) ||
+    hasMissingValue(fields.ownerName) ||
+    hasMissingValue(fields.propertyAddress)
+  );
+}
+
+function deriveComplianceStatus(input: {
+  fields: GovernanceNormalizedFields;
+  findings: Array<typeof governanceFindingsTable.$inferSelect>;
+  record: GovernanceRecordRow;
+  warnings: Array<typeof governanceRiskWarningsTable.$inferSelect>;
+}): GovernanceEnterpriseComplianceStatus {
+  if (input.fields.enterpriseComplianceStatus) {
+    return input.fields.enterpriseComplianceStatus;
+  }
+
+  if (
+    input.warnings.some((warning) => warning.severity === "critical") ||
+    input.findings.some((finding) => finding.isBlocking)
+  ) {
+    return "blocked";
+  }
+
+  if (hasRequiredFieldGap(input.fields)) {
+    return "remediation";
+  }
+
+  if (input.warnings.length > 0 || input.record.status === "risk_review_required") {
+    return "attention";
+  }
+
+  return "normal";
+}
+
+function getGovernanceRating(score: number) {
+  if (score >= 90) {
+    return "A";
+  }
+
+  if (score >= 75) {
+    return "B";
+  }
+
+  if (score >= 60) {
+    return "C";
+  }
+
+  return "D";
+}
+
+function toEnterpriseLedgerItem(input: {
+  aiJobs: Array<typeof governanceAiJobsTable.$inferSelect>;
+  findings: Array<typeof governanceFindingsTable.$inferSelect>;
+  latestWorkflow?: GovernanceWorkflowInstanceRow;
+  pendingReminder?: string | null;
+  record: GovernanceRecordRow;
+  uploadCount: number;
+  warnings: Array<typeof governanceRiskWarningsTable.$inferSelect>;
+}): GovernanceEnterpriseLedgerItem {
+  const fields = getPersistedNormalizedFields(input.record);
+  const complianceStatus = deriveComplianceStatus({
+    fields,
+    findings: input.findings,
+    record: input.record,
+    warnings: input.warnings,
+  });
+  const missingPenalty = hasRequiredFieldGap(fields) ? 15 : 0;
+  const score =
+    fields.enterpriseGovernanceScore ??
+    Math.max(45, 92 - input.warnings.length * 10 - missingPenalty);
+  const remediationFocus = Array.from(
+    new Set([
+      ...(fields.enterpriseRemediationFocus ?? []),
+      ...input.warnings.map((warning) => warning.remediationHint),
+      ...input.findings
+        .filter((finding) => finding.status === "open")
+        .map((finding) => finding.summary),
+    ]),
+  ).filter(Boolean);
+
+  return {
+    ...toRecordSummary({
+      ...input.record,
+      activeWarningCount: input.warnings.length,
+      pendingReminder: input.pendingReminder ?? null,
+      uploadCount: input.uploadCount,
+    }),
+    approvalState: input.record.finalOutcomeStatus ?? "流转中",
+    completenessStatus: hasRequiredFieldGap(fields)
+      ? "missing_required_fields"
+      : "complete",
+    complianceStatus,
+    duplicateFindingCount: input.warnings.filter((warning) =>
+      warning.source.includes("duplication"),
+    ).length,
+    governanceRating:
+      fields.enterpriseGovernanceRating ?? getGovernanceRating(score),
+    governanceScore: score,
+    mockAiIndicatorCount: input.aiJobs.reduce(
+      (total, job) => total + job.riskIndicators.length,
+      0,
+    ),
+    openWarningCount: input.warnings.length,
+    registrationNumber:
+      fields.enterpriseRegistrationNumber ?? fields.registrationNo,
+    remediationFocus,
+    responsibleParty: fields.ownerName,
+    workflowState:
+      input.latestWorkflow?.currentNodeName ??
+      input.record.finalOutcomeStatus ??
+      getGovernanceStatusLabel(input.record.status),
+  };
+}
+
+function getTodoPriority(severity: GovernanceRiskSeverity): GovernanceTodoItem["priority"] {
+  if (severity === "critical") {
+    return "critical";
+  }
+
+  if (severity === "warning") {
+    return "high";
+  }
+
+  return "normal";
 }
 
 async function appendWorkflowEvent(input: {
@@ -1000,7 +1535,7 @@ async function runGovernanceChecks(recordId: string) {
     throw new AdminServiceError("未找到指定治理记录。", 404);
   }
 
-  const fields = record.normalizedFields as GovernanceNormalizedFields;
+  const fields = getPersistedNormalizedFields(record);
 
   if (
     hasMissingValue(fields.registrationNo) ||
@@ -1219,8 +1754,26 @@ async function seedFixtureRecords() {
     allowDuplicate: true,
     fields: {
       ...baseFields,
+      assessedValueTenThousand: 12800,
+      coordinates: {
+        lat: 31.2397,
+        lng: 121.4998,
+      },
       entityName: "青岚置业有限公司",
+      enterpriseComplianceStatus: "normal",
+      enterpriseGovernanceRating: "A",
+      enterpriseGovernanceScore: 92,
+      enterpriseRegistrationNumber: "91310000MA1K00001A",
+      enterpriseRemediationFocus: ["保持年度权属材料更新"],
+      leaseExpiryDate: "2026-08-31",
+      locationLabel: "上海浦东",
+      ownershipStatus: "自持",
+      propertyAreaSqm: 1860,
+      propertyNumber: "RE-2026-001",
+      propertyType: "办公",
       registrationNo: "GOV-2026-SEED-01",
+      rentOverdueAmountTenThousand: 0,
+      tenantName: "青岚城市服务",
     },
     mockScenarioId: "normal-success",
     originalFilename: "normal-success.docx",
@@ -1231,12 +1784,27 @@ async function seedFixtureRecords() {
     allowDuplicate: true,
     fields: {
       ...baseFields,
+      assessedValueTenThousand: 24600,
       businessType: "企业治理合规复核",
+      coordinates: null,
       entityName: "澄湖城市运营集团",
+      enterpriseComplianceStatus: "remediation",
+      enterpriseGovernanceRating: "C",
+      enterpriseGovernanceScore: 68,
+      enterpriseRegistrationNumber: "91320594MA1K00002B",
+      enterpriseRemediationFocus: ["核验历史抵押事项", "确认权属人冲突字段"],
+      leaseExpiryDate: "2026-06-20",
+      locationLabel: "苏州园区",
       ownerName: "韩骁 / 周序",
+      ownershipStatus: "共有",
       propertyAddress: "苏州市工业园区星湖街 328 号",
+      propertyAreaSqm: 3200,
+      propertyNumber: "RE-2026-002",
+      propertyType: "产业园",
       registrationNo: "GOV-2026-SEED-02",
+      rentOverdueAmountTenThousand: 36,
       riskNote: "历史抵押事项待核验",
+      tenantName: "澄湖科创孵化器",
     },
     mockScenarioId: "risk-warning",
     originalFilename: "risk-warning.xlsx",
@@ -1558,40 +2126,287 @@ export async function listGovernanceRecords() {
   );
 }
 
-export async function getGovernanceDashboard() {
+export async function getRealEstateAssetLedger(): Promise<GovernanceAssetLedgerResponse> {
   await ensureGovernanceData();
   await completeDueAiJobs();
 
-  const [records, uploads, workflows, jobs, warnings, templates] =
+  const [records, reminders, uploads, warnings] = await Promise.all([
+    db
+      .select()
+      .from(governanceRecordsTable)
+      .orderBy(desc(governanceRecordsTable.updatedAt))
+      .all(),
+    db
+      .select()
+      .from(governanceRemindersTable)
+      .where(eq(governanceRemindersTable.status, "pending"))
+      .all(),
+    db.select().from(governanceUploadsTable).all(),
+    db
+      .select()
+      .from(governanceRiskWarningsTable)
+      .where(eq(governanceRiskWarningsTable.status, "open"))
+      .all(),
+  ]);
+  const reminderByRecordId = new Map(
+    reminders.map((reminder) => [reminder.recordId, reminder.summary]),
+  );
+  const assets = records.map((record) => {
+    const recordWarnings = warnings.filter(
+      (warning) => warning.recordId === record.id,
+    );
+
+    return toAssetLedgerItem({
+      activeWarningCount: recordWarnings.length,
+      pendingReminder: reminderByRecordId.get(record.id) ?? null,
+      record,
+      uploadCount: uploads.filter((upload) => upload.recordId === record.id)
+        .length,
+      warnings: recordWarnings,
+    });
+  });
+
+  return {
+    assets,
+    filters: buildAssetFilterOptions(assets),
+    mapDistribution: buildMapDistribution(assets),
+  };
+}
+
+export async function getEnterpriseGovernanceAnalysis(): Promise<GovernanceEnterpriseAnalysisResponse> {
+  await ensureGovernanceData();
+  await completeDueAiJobs();
+
+  const [records, reminders, uploads, warnings, findings, workflows, aiJobs] =
     await Promise.all([
-      db.select().from(governanceRecordsTable).all(),
-      db.select().from(governanceUploadsTable).all(),
       db
         .select()
-        .from(governanceWorkflowInstancesTable)
-        .where(eq(governanceWorkflowInstancesTable.status, "pending"))
+        .from(governanceRecordsTable)
+        .orderBy(desc(governanceRecordsTable.updatedAt))
         .all(),
       db
         .select()
-        .from(governanceAiJobsTable)
-        .where(eq(governanceAiJobsTable.status, "processing"))
+        .from(governanceRemindersTable)
+        .where(eq(governanceRemindersTable.status, "pending"))
+        .all(),
+      db.select().from(governanceUploadsTable).all(),
+      db
+        .select()
+        .from(governanceRiskWarningsTable)
+        .where(eq(governanceRiskWarningsTable.status, "open"))
+        .all(),
+      db
+        .select()
+        .from(governanceFindingsTable)
+        .where(eq(governanceFindingsTable.status, "open"))
+        .all(),
+      db
+        .select()
+        .from(governanceWorkflowInstancesTable)
+        .orderBy(desc(governanceWorkflowInstancesTable.updatedAt))
+        .all(),
+      db.select().from(governanceAiJobsTable).all(),
+    ]);
+  const reminderByRecordId = new Map(
+    reminders.map((reminder) => [reminder.recordId, reminder.summary]),
+  );
+  const latestWorkflowByRecordId = new Map<string, GovernanceWorkflowInstanceRow>();
+
+  for (const workflow of workflows) {
+    if (!latestWorkflowByRecordId.has(workflow.recordId)) {
+      latestWorkflowByRecordId.set(workflow.recordId, workflow);
+    }
+  }
+
+  const enterprises = records.map((record) =>
+    toEnterpriseLedgerItem({
+      aiJobs: aiJobs.filter((job) => job.recordId === record.id),
+      findings: findings.filter((finding) => finding.recordId === record.id),
+      latestWorkflow: latestWorkflowByRecordId.get(record.id),
+      pendingReminder: reminderByRecordId.get(record.id) ?? null,
+      record,
+      uploadCount: uploads.filter((upload) => upload.recordId === record.id)
+        .length,
+      warnings: warnings.filter((warning) => warning.recordId === record.id),
+    }),
+  );
+  const remediationFocus = enterprises
+    .filter((enterprise) => enterprise.remediationFocus.length > 0)
+    .map((enterprise) => ({
+      items: enterprise.remediationFocus.map((summary) => ({
+        source: "rule/mock",
+        summary,
+      })),
+      recordId: enterprise.id,
+      recordTitle: enterprise.title,
+    }));
+
+  return {
+    analysis: {
+      attentionRecords: enterprises.filter(
+        (enterprise) => enterprise.complianceStatus === "attention",
+      ).length,
+      averageScore: enterprises.length
+        ? Math.round(
+            enterprises.reduce(
+              (total, enterprise) => total + enterprise.governanceScore,
+              0,
+            ) / enterprises.length,
+          )
+        : 0,
+      completeRecords: enterprises.filter(
+        (enterprise) => enterprise.completenessStatus === "complete",
+      ).length,
+      duplicateFindings: enterprises.reduce(
+        (total, enterprise) => total + enterprise.duplicateFindingCount,
+        0,
+      ),
+      mockAiIndicators: enterprises.reduce(
+        (total, enterprise) => total + enterprise.mockAiIndicatorCount,
+        0,
+      ),
+      openWarnings: warnings.length,
+      pendingApproval: workflows.filter(
+        (workflow) => workflow.status === "pending",
+      ).length,
+      remediationRecords: enterprises.filter(
+        (enterprise) =>
+          enterprise.complianceStatus === "remediation" ||
+          enterprise.complianceStatus === "blocked",
+      ).length,
+      totalEnterprises: enterprises.length,
+    },
+    enterprises,
+    remediationFocus,
+  };
+}
+
+export async function getGovernanceHomepageOverview() {
+  await ensureGovernanceData();
+  await completeDueAiJobs();
+
+  const [records, reminders, warnings, workflows, uploads, jobs, templates] =
+    await Promise.all([
+      db.select().from(governanceRecordsTable).all(),
+      db
+        .select()
+        .from(governanceRemindersTable)
+        .where(eq(governanceRemindersTable.status, "pending"))
         .all(),
       db
         .select()
         .from(governanceRiskWarningsTable)
         .where(eq(governanceRiskWarningsTable.status, "open"))
         .all(),
+      db
+        .select()
+        .from(governanceWorkflowInstancesTable)
+        .where(eq(governanceWorkflowInstancesTable.status, "pending"))
+        .all(),
+      db.select().from(governanceUploadsTable).all(),
+      db
+        .select()
+        .from(governanceAiJobsTable)
+        .where(eq(governanceAiJobsTable.status, "processing"))
+        .all(),
       db.select().from(governanceTemplatesTable).all(),
     ]);
+  const recordById = new Map(records.map((record) => [record.id, record]));
+  const assets = records.map((record) =>
+    toAssetLedgerItem({
+      activeWarningCount: warnings.filter(
+        (warning) => warning.recordId === record.id,
+      ).length,
+      record,
+      uploadCount: uploads.filter((upload) => upload.recordId === record.id)
+        .length,
+      warnings: warnings.filter((warning) => warning.recordId === record.id),
+    }),
+  );
+  const missingFieldTodos: GovernanceTodoItem[] = records
+    .filter((record) => hasRequiredFieldGap(getPersistedNormalizedFields(record)))
+    .map((record) => ({
+      action: "补齐治理必填字段",
+      priority: "medium",
+      recordId: record.id,
+      recordTitle: record.title,
+      sourceType: "missing_field",
+      summary: "登记编号、权属人或地址存在缺失。",
+    }));
+  const leaseTodos: GovernanceTodoItem[] = assets
+    .filter(
+      (asset) =>
+        asset.leaseExpiryStatus === "expired" ||
+        asset.leaseExpiryStatus === "expiring_soon",
+    )
+    .map((asset) => ({
+      action: "复核租赁到期安排",
+      priority: asset.leaseExpiryStatus === "expired" ? "high" : "medium",
+      recordId: asset.id,
+      recordTitle: asset.title,
+      sourceType: "expiring_lease",
+      summary: `${asset.propertyNumber} 租期状态：${asset.leaseExpiryStatus}。`,
+    }));
+  const todos: GovernanceTodoItem[] = [
+    ...workflows.map((workflow) => ({
+      action: `处理${workflow.currentNodeName}`,
+      priority: "high" as const,
+      recordId: workflow.recordId,
+      recordTitle: recordById.get(workflow.recordId)?.title ?? workflow.recordId,
+      sourceType: "workflow" as const,
+      summary: "审批流程存在待处理节点。",
+    })),
+    ...reminders.map((reminder) => ({
+      action: "处理提醒",
+      priority: "normal" as const,
+      recordId: reminder.recordId,
+      recordTitle: recordById.get(reminder.recordId)?.title ?? reminder.recordId,
+      sourceType: "reminder" as const,
+      summary: reminder.summary,
+    })),
+    ...warnings.map((warning) => ({
+      action: "处置风险预警",
+      priority: getTodoPriority(warning.severity),
+      recordId: warning.recordId,
+      recordTitle: recordById.get(warning.recordId)?.title ?? warning.recordId,
+      sourceType: "risk_warning" as const,
+      summary: warning.reason,
+    })),
+    ...jobs.map((job) => ({
+      action: "刷新 Mock AI 结果",
+      priority: "normal" as const,
+      recordId: job.recordId,
+      recordTitle: recordById.get(job.recordId)?.title ?? job.recordId,
+      sourceType: "mock_ai_review" as const,
+      summary: `${job.processorName} 仍在处理中，结果为 Mock 输出。`,
+    })),
+    ...missingFieldTodos,
+    ...leaseTodos,
+  ];
 
   return {
-    activeWarnings: warnings.length,
-    aiJobsProcessing: jobs.length,
-    records: records.length,
-    templateCount: templates.length,
-    uploads: uploads.length,
-    workflowPending: workflows.length,
-  } satisfies GovernanceDashboard;
+    dashboard: {
+      activeWarnings: warnings.length,
+      aiJobsProcessing: jobs.length,
+      assets: assets.length,
+      enterpriseRecords: records.length,
+      expiringLeases: leaseTodos.length,
+      missingRequiredFields: missingFieldTodos.length,
+      mockAiReviewItems: jobs.length,
+      records: records.length,
+      templateCount: templates.length,
+      todoItems: todos.length,
+      uploads: uploads.length,
+      workflowPending: workflows.length,
+    } satisfies GovernanceDashboard,
+    todos,
+  };
+}
+
+export async function getGovernanceDashboard() {
+  const overview = await getGovernanceHomepageOverview();
+
+  return overview.dashboard;
 }
 
 export async function getGovernanceRecordDetail(recordId: string) {
@@ -1675,7 +2490,7 @@ export async function getGovernanceRecordDetail(recordId: string) {
     aiEvidence: record.aiEvidence,
     aiJobs: aiJobs.map(toAiJob),
     findings: findings.map(toFinding),
-    normalizedFields: record.normalizedFields as GovernanceNormalizedFields,
+    normalizedFields: getPersistedNormalizedFields(record),
     reminders: reminders.map(toReminder),
     riskWarnings: riskWarnings.map(toRiskWarning),
     uploads: uploads.map(toUpload),
@@ -1752,7 +2567,7 @@ export async function updateGovernanceRecord(
       ? record.mockScenarioId
       : "normal-success",
     {
-      ...(record.normalizedFields as GovernanceNormalizedFields),
+      ...getPersistedNormalizedFields(record),
       ...input.fields,
     },
   );
@@ -2095,7 +2910,7 @@ async function submitWorkflowInternal(
     throw new AdminServiceError("未找到指定治理记录。", 404);
   }
 
-  const fields = record.normalizedFields as GovernanceNormalizedFields;
+  const fields = getPersistedNormalizedFields(record);
 
   if (
     hasMissingValue(fields.entityName) ||

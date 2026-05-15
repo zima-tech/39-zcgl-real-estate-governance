@@ -32,6 +32,20 @@ All other seeded demo users use the password `123456`.
 
 Workflow transitions support approve, reject, return, transfer, correction, and archive actions. Reject and return require comments. Node history is persisted in chronological workflow events.
 
+## PRD-Aligned Pages
+
+- Data overview: persisted governance counts plus todo items from workflow tasks, reminders, open warnings, missing required fields, expiring leases, and Mock AI jobs requiring review.
+- Real-estate management: property number, type, area, ownership status, tenant, lease expiry, assessed value, risk level, location label, optional coordinates, and map-distribution groups.
+- Enterprise governance: enterprise identity, business type, registration number, workflow state, warning count, compliance status, governance score, duplicate findings, approval state, and remediation focus.
+- Existing pages remain available: business records, template upload, workflow management, risk warning, scenario simulation, user/role management, and audit logs.
+
+## Rule-Based Outputs
+
+- Asset value assessment is derived from persisted or fixture value and area fields. It is not a production appraisal.
+- Lease expiry and rent overdue indicators are rule/mock labels derived from normalized fields. They are not synchronized with a finance or lease system.
+- Map distribution uses stored coordinates when present and falls back to address-only grouping. No map provider or geocoding service is integrated.
+- Enterprise compliance status and governance score are derived from missing fields, workflow state, findings, open warnings, duplicate warnings, and Mock AI indicators.
+
 ## Mock AI Processors
 
 - `ownership-extraction`: extracts subject, owner, address, and registration fields from uploaded business context.
@@ -40,6 +54,8 @@ Workflow transitions support approve, reject, return, transfer, correction, and 
 - `archive-summary`: creates a mock archive summary with no risk indicator by default.
 
 All AI output is deterministic mock data. Jobs persist processor name, input reference, mock source, timestamps, status, output summary, payload, and risk indicators. Processing delay is configured per processor and can be polled through the record AI job endpoint.
+
+Deferred production integrations remain out of scope for this module: real OCR, real map provider SDK/geocoding, external registry or ERP sync, financial receivables sync, legally binding electronic signature, and production valuation.
 
 ## Scenario Bundles
 

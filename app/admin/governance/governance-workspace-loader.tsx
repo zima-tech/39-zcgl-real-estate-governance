@@ -3,7 +3,10 @@ import {
   type GovernanceWorkspaceTabKey,
 } from "@/app/admin/_components/governance-workspace-page";
 import {
+  getEnterpriseGovernanceAnalysis,
+  getGovernanceHomepageOverview,
   getGovernanceDashboard,
+  getRealEstateAssetLedger,
   governanceProcessors,
   governanceScenarioBundles,
   listGovernanceRecords,
@@ -21,6 +24,9 @@ export async function GovernanceWorkspaceLoader({
   const [
     initialRecords,
     initialDashboard,
+    initialAssetLedger,
+    initialEnterpriseAnalysis,
+    initialHomepageOverview,
     initialTemplates,
     initialWarnings,
     initialWorkflowTasks,
@@ -28,6 +34,9 @@ export async function GovernanceWorkspaceLoader({
   ] = await Promise.all([
     listGovernanceRecords(),
     getGovernanceDashboard(),
+    getRealEstateAssetLedger(),
+    getEnterpriseGovernanceAnalysis(),
+    getGovernanceHomepageOverview(),
     listGovernanceTemplates(),
     listGovernanceWarnings(),
     listPendingGovernanceTasks(),
@@ -37,7 +46,10 @@ export async function GovernanceWorkspaceLoader({
   return (
     <GovernanceWorkspacePage
       initialActiveTab={activeTab}
+      initialAssetLedger={initialAssetLedger}
       initialDashboard={initialDashboard}
+      initialEnterpriseAnalysis={initialEnterpriseAnalysis}
+      initialHomepageTodos={initialHomepageOverview.todos}
       initialProcessors={governanceProcessors}
       initialRecords={initialRecords}
       initialScenarioBundles={Object.entries(governanceScenarioBundles).map(

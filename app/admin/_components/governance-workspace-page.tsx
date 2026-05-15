@@ -18,14 +18,18 @@ import {
   Tag,
   Timeline,
 } from "antd";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AdminPageFrame } from "@/app/admin/_components/admin-page-frame";
 import { DetailDrawerShell } from "@/app/admin/_components/shared/detail-drawer-shell";
 import { adminClient } from "@/lib/admin/client";
 import type {
   CreateGovernanceUploadInput,
+  GovernanceAssetLedgerItem,
+  GovernanceAssetLedgerResponse,
   GovernanceDashboard,
+  GovernanceEnterpriseAnalysisResponse,
+  GovernanceEnterpriseLedgerItem,
   GovernanceNormalizedFields,
   GovernanceProcessor,
   GovernanceRecordDetail,
@@ -34,6 +38,7 @@ import type {
   GovernanceScenarioRun,
   GovernanceSourceType,
   GovernanceTemplate,
+  GovernanceTodoItem,
   GovernanceWorkflowAction,
 } from "@/lib/admin/governance-service";
 
@@ -53,6 +58,9 @@ type ScenarioBundleOption = {
 };
 
 export type GovernanceWorkspaceTabKey =
+  | "assets"
+  | "enterprise"
+  | "overview"
   | "records"
   | "templates"
   | "workflow"
@@ -60,8 +68,11 @@ export type GovernanceWorkspaceTabKey =
   | "scenarios";
 
 type GovernanceWorkspacePageProps = {
+  initialAssetLedger: GovernanceAssetLedgerResponse;
   initialDashboard: GovernanceDashboard;
+  initialEnterpriseAnalysis: GovernanceEnterpriseAnalysisResponse;
   initialActiveTab?: GovernanceWorkspaceTabKey;
+  initialHomepageTodos: GovernanceTodoItem[];
   initialProcessors: GovernanceProcessor[];
   initialRecords: GovernanceRecordSummary[];
   initialScenarioBundles: ScenarioBundleOption[];
@@ -190,8 +201,62 @@ function getSeverityColor(severity: string) {
   return "blue";
 }
 
+const riskLevelLabels: Record<string, string> = {
+  critical: "严重",
+  high: "高",
+  low: "低",
+  medium: "中",
+};
+
+const leaseStatusLabels: Record<string, string> = {
+  active: "租期正常",
+  expired: "已到期",
+  expiring_soon: "即将到期",
+  not_applicable: "无租期",
+};
+
+const complianceStatusLabels: Record<string, string> = {
+  attention: "需关注",
+  blocked: "阻断",
+  normal: "正常",
+  remediation: "需整改",
+};
+
+function getRiskColor(riskLevel: string) {
+  if (riskLevel === "critical" || riskLevel === "blocked") {
+    return "red";
+  }
+
+  if (riskLevel === "high" || riskLevel === "remediation") {
+    return "volcano";
+  }
+
+  if (riskLevel === "medium" || riskLevel === "attention") {
+    return "gold";
+  }
+
+  return "green";
+}
+
+function getTodoColor(priority: GovernanceTodoItem["priority"]) {
+  switch (priority) {
+    case "critical":
+      return "red";
+    case "high":
+      return "volcano";
+    case "medium":
+      return "gold";
+    case "normal":
+      return "blue";
+  }
+}
+
 export function GovernanceWorkspacePage({
+  initialAssetLedger,
+  initialActiveTab,
   initialDashboard,
+  initialEnterpriseAnalysis,
+  initialHomepageTodos,
   initialProcessors,
   initialRecords,
   initialScenarioBundles,
@@ -205,7 +270,12 @@ export function GovernanceWorkspacePage({
   const [uploadForm] = Form.useForm<UploadFormValues>();
   const [actionForm] = Form.useForm<ActionFormValues>();
   const [records, setRecords] = useState(initialRecords);
+  const [assetLedger, setAssetLedger] = useState(initialAssetLedger);
   const [dashboard, setDashboard] = useState(initialDashboard);
+  const [enterpriseAnalysis, setEnterpriseAnalysis] = useState(
+    initialEnterpriseAnalysis,
+  );
+  const [homepageTodos, setHomepageTodos] = useState(initialHomepageTodos);
   const [templates, setTemplates] = useState(initialTemplates);
   const [warnings, setWarnings] = useState(initialWarnings);
   const [workflowTasks, setWorkflowTasks] = useState(initialWorkflowTasks);
@@ -228,11 +298,26 @@ export function GovernanceWorkspacePage({
   const [queueFilter, setQueueFilter] = useState<
     "all" | "pending" | "correction" | "review" | "completed"
   >("all");
+  const [assetFilters, setAssetFilters] = useState({
+    leaseExpiryStatus: "all",
+    ownershipStatus: "all",
+    propertyType: "all",
+    riskLevel: "all",
+    tenantName: "all",
+    workflowStatus: "all",
+  });
+
+  useEffect(() => {
+    setActiveTab(initialActiveTab ?? "records");
+  }, [initialActiveTab]);
 
   async function refreshWorkspace() {
     const [
       recordsResponse,
       dashboardResponse,
+      assetLedgerResponse,
+      enterpriseAnalysisResponse,
+      homepageOverviewResponse,
       templatesResponse,
       warningsResponse,
       tasksResponse,
@@ -240,6 +325,9 @@ export function GovernanceWorkspacePage({
     ] = await Promise.all([
       adminClient.listGovernanceRecords(),
       adminClient.getGovernanceDashboard(),
+      adminClient.getRealEstateAssetLedger(),
+      adminClient.getEnterpriseGovernanceAnalysis(),
+      adminClient.getGovernanceHomepageOverview(),
       adminClient.listGovernanceTemplates(),
       adminClient.listGovernanceWarnings(),
       adminClient.listGovernanceWorkflowTasks(),
@@ -248,6 +336,9 @@ export function GovernanceWorkspacePage({
 
     setRecords(recordsResponse.records);
     setDashboard(dashboardResponse.dashboard);
+    setAssetLedger(assetLedgerResponse);
+    setEnterpriseAnalysis(enterpriseAnalysisResponse);
+    setHomepageTodos(homepageOverviewResponse.todos);
     setTemplates(templatesResponse.templates);
     setWarnings(warningsResponse.warnings);
     setWorkflowTasks(tasksResponse.tasks);
@@ -538,15 +629,40 @@ export function GovernanceWorkspacePage({
     });
   }, [queueFilter, records]);
 
+  const filteredAssets = useMemo(() => {
+    return assetLedger.assets.filter((asset) => {
+      return (
+        (assetFilters.propertyType === "all" ||
+          asset.propertyType === assetFilters.propertyType) &&
+        (assetFilters.ownershipStatus === "all" ||
+          asset.ownershipStatus === assetFilters.ownershipStatus) &&
+        (assetFilters.tenantName === "all" ||
+          asset.tenantName === assetFilters.tenantName) &&
+        (assetFilters.leaseExpiryStatus === "all" ||
+          asset.leaseExpiryStatus === assetFilters.leaseExpiryStatus) &&
+        (assetFilters.riskLevel === "all" ||
+          asset.riskLevel === assetFilters.riskLevel) &&
+        (assetFilters.workflowStatus === "all" ||
+          asset.workflowStatus === assetFilters.workflowStatus)
+      );
+    });
+  }, [assetFilters, assetLedger.assets]);
+
   const overview = (
     <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
       {[
-        ["业务记录", dashboard.records],
-        ["上传材料", dashboard.uploads],
+        ["治理记录", dashboard.records],
+        ["不动产资产", dashboard.assets],
+        ["企业记录", dashboard.enterpriseRecords],
+        ["首页待办", dashboard.todoItems],
         ["审批待办", dashboard.workflowPending],
+        ["打开预警", dashboard.activeWarnings],
+        ["上传材料", dashboard.uploads],
         ["Mock AI 处理中", dashboard.aiJobsProcessing],
-        ["风险预警", dashboard.activeWarnings],
+        ["到期租赁", dashboard.expiringLeases],
+        ["缺失字段", dashboard.missingRequiredFields],
         ["模板", dashboard.templateCount],
+        ["Mock 复核项", dashboard.mockAiReviewItems],
       ].map(([label, value]) => (
         <article key={label} className="rounded-md border bg-white p-4">
           <p className="text-sm text-stone-500">{label}</p>
@@ -653,6 +769,162 @@ export function GovernanceWorkspacePage({
     },
   ];
 
+  const assetColumns: TableProps<GovernanceAssetLedgerItem>["columns"] = [
+    {
+      title: "资产",
+      key: "asset",
+      render: (_, asset) => (
+        <div className="min-w-[220px]">
+          <p className="font-semibold text-stone-950">{asset.propertyNumber}</p>
+          <p className="mt-1 text-sm text-stone-500">
+            {asset.propertyType} · {asset.propertyAreaSqm}㎡
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: "权属/承租",
+      key: "ownership",
+      render: (_, asset) => (
+        <div>
+          <Tag>{asset.ownershipStatus}</Tag>
+          <p className="mt-1 text-sm text-stone-500">{asset.tenantName}</p>
+        </div>
+      ),
+    },
+    {
+      title: "租期",
+      key: "lease",
+      render: (_, asset) => (
+        <div>
+          <Tag color={asset.leaseExpiryStatus === "expired" ? "red" : "gold"}>
+            {leaseStatusLabels[asset.leaseExpiryStatus]}
+          </Tag>
+          <p className="mt-1 text-sm text-stone-500">
+            {asset.leaseExpiryDate ?? "未配置"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: "评估值",
+      key: "value",
+      render: (_, asset) => (
+        <div>
+          <p>{asset.assessedValueTenThousand.toLocaleString()} 万元</p>
+          <p className="mt-1 text-xs text-stone-500">
+            {asset.valueAssessment.label} · {asset.valueAssessment.source}
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: "风险",
+      key: "risk",
+      render: (_, asset) => (
+        <Space wrap>
+          <Tag color={getRiskColor(asset.riskLevel)}>
+            {riskLevelLabels[asset.riskLevel]}
+          </Tag>
+          <Tag>{asset.rentOverdueIndicator.label}</Tag>
+          <Tag>{asset.ownershipRiskIndicator.label}</Tag>
+        </Space>
+      ),
+    },
+    {
+      title: "位置",
+      key: "location",
+      render: (_, asset) => (
+        <div>
+          <p>{asset.locationLabel}</p>
+          <p className="mt-1 text-xs text-stone-500">
+            {asset.coordinateStatus === "coordinates"
+              ? "坐标数据"
+              : "地址-only 分布"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: "流程",
+      dataIndex: "workflowStatus",
+      key: "workflowStatus",
+      render: (status: GovernanceRecordSummary["status"]) => (
+        <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
+      ),
+    },
+  ];
+
+  const enterpriseColumns: TableProps<GovernanceEnterpriseLedgerItem>["columns"] =
+    [
+      {
+        title: "企业",
+        key: "enterprise",
+        render: (_, enterprise) => (
+          <div className="min-w-[220px]">
+            <p className="font-semibold text-stone-950">
+              {enterprise.entityName}
+            </p>
+            <p className="mt-1 text-sm text-stone-500">
+              {enterprise.businessType}
+            </p>
+          </div>
+        ),
+      },
+      {
+        title: "统一登记号",
+        dataIndex: "registrationNumber",
+        key: "registrationNumber",
+      },
+      {
+        title: "流程/审批",
+        key: "workflow",
+        render: (_, enterprise) => (
+          <div>
+            <p>{enterprise.workflowState}</p>
+            <p className="mt-1 text-xs text-stone-500">
+              {enterprise.approvalState}
+            </p>
+          </div>
+        ),
+      },
+      {
+        title: "治理评分",
+        key: "score",
+        render: (_, enterprise) => (
+          <Space>
+            <Progress
+              percent={enterprise.governanceScore}
+              size="small"
+              className="w-24"
+            />
+            <Tag>{enterprise.governanceRating}</Tag>
+          </Space>
+        ),
+      },
+      {
+        title: "合规状态",
+        key: "compliance",
+        render: (_, enterprise) => (
+          <Space wrap>
+            <Tag color={getRiskColor(enterprise.complianceStatus)}>
+              {complianceStatusLabels[enterprise.complianceStatus]}
+            </Tag>
+            <Tag>{enterprise.openWarningCount} 条预警</Tag>
+            <Tag>{enterprise.mockAiIndicatorCount} 个 Mock 指标</Tag>
+          </Space>
+        ),
+      },
+      {
+        title: "整改重点",
+        key: "remediation",
+        render: (_, enterprise) =>
+          enterprise.remediationFocus.length
+            ? enterprise.remediationFocus.slice(0, 2).join("；")
+            : "暂无",
+      },
+    ];
+
   const selectedCanAct = selectedRecord && !selectedRecord.finalOutcomeStatus;
   const intakeTitle = intakeSourceType
     ? sourceTypeLabels[intakeSourceType]
@@ -696,6 +968,253 @@ export function GovernanceWorkspacePage({
           activeKey={activeTab}
           onChange={(key) => setActiveTab(key as GovernanceWorkspaceTabKey)}
           items={[
+            {
+              key: "overview",
+              label: "数据总览",
+              children: (
+                <div className="space-y-5">
+                  <Table<GovernanceTodoItem>
+                    rowKey={(todo) =>
+                      `${todo.sourceType}:${todo.recordId}:${todo.summary}`
+                    }
+                    dataSource={homepageTodos}
+                    pagination={{ pageSize: 8 }}
+                    columns={[
+                      {
+                        title: "优先级",
+                        dataIndex: "priority",
+                        key: "priority",
+                        render: (priority: GovernanceTodoItem["priority"]) => (
+                          <Tag color={getTodoColor(priority)}>{priority}</Tag>
+                        ),
+                      },
+                      {
+                        title: "来源",
+                        dataIndex: "sourceType",
+                        key: "sourceType",
+                      },
+                      {
+                        title: "业务记录",
+                        dataIndex: "recordTitle",
+                        key: "recordTitle",
+                      },
+                      {
+                        title: "摘要",
+                        dataIndex: "summary",
+                        key: "summary",
+                      },
+                      {
+                        title: "动作",
+                        key: "action",
+                        render: (_, todo) => (
+                          <Button
+                            type="link"
+                            onClick={() => void openRecordDetail(todo.recordId)}
+                          >
+                            {todo.action}
+                          </Button>
+                        ),
+                      },
+                    ]}
+                    locale={{ emptyText: "暂无首页待办。" }}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: "assets",
+              label: "不动产管理",
+              children: (
+                <div className="space-y-5">
+                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                    <Select
+                      value={assetFilters.propertyType}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          propertyType: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部类型", value: "all" },
+                        ...assetLedger.filters.propertyTypes.map((value) => ({
+                          label: value,
+                          value,
+                        })),
+                      ]}
+                    />
+                    <Select
+                      value={assetFilters.ownershipStatus}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          ownershipStatus: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部权属", value: "all" },
+                        ...assetLedger.filters.ownershipStatuses.map((value) => ({
+                          label: value,
+                          value,
+                        })),
+                      ]}
+                    />
+                    <Select
+                      value={assetFilters.tenantName}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          tenantName: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部承租方", value: "all" },
+                        ...assetLedger.filters.tenants.map((value) => ({
+                          label: value,
+                          value,
+                        })),
+                      ]}
+                    />
+                    <Select
+                      value={assetFilters.leaseExpiryStatus}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          leaseExpiryStatus: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部租期", value: "all" },
+                        ...assetLedger.filters.leaseExpiryStatuses.map(
+                          (value) => ({
+                            label: leaseStatusLabels[value],
+                            value,
+                          }),
+                        ),
+                      ]}
+                    />
+                    <Select
+                      value={assetFilters.riskLevel}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          riskLevel: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部风险", value: "all" },
+                        ...assetLedger.filters.riskLevels.map((value) => ({
+                          label: riskLevelLabels[value],
+                          value,
+                        })),
+                      ]}
+                    />
+                    <Select
+                      value={assetFilters.workflowStatus}
+                      onChange={(value) =>
+                        setAssetFilters((current) => ({
+                          ...current,
+                          workflowStatus: value,
+                        }))
+                      }
+                      options={[
+                        { label: "全部流程", value: "all" },
+                        ...assetLedger.filters.workflowStatuses.map((value) => ({
+                          label: statusLabels[value],
+                          value,
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <Table<GovernanceAssetLedgerItem>
+                    rowKey="id"
+                    columns={assetColumns}
+                    dataSource={filteredAssets}
+                    pagination={{ pageSize: 8 }}
+                    scroll={{ x: 1320 }}
+                    locale={{ emptyText: "暂无不动产台账。" }}
+                  />
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {assetLedger.mapDistribution.map((group) => (
+                      <article
+                        key={group.locationLabel}
+                        className="rounded-md border bg-white p-4"
+                      >
+                        <p className="font-semibold text-stone-950">
+                          {group.locationLabel}
+                        </p>
+                        <p className="mt-2 text-sm text-stone-500">
+                          {group.recordCount} 宗资产 · {group.coordinateCount} 宗有坐标 · {group.addressOnlyCount} 宗地址-only
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {Object.entries(group.riskCounts).map(
+                            ([riskLevel, count]) => (
+                              <Tag key={riskLevel} color={getRiskColor(riskLevel)}>
+                                {riskLevelLabels[riskLevel]} {count}
+                              </Tag>
+                            ),
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "enterprise",
+              label: "企业治理",
+              children: (
+                <div className="space-y-5">
+                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                    {[
+                      ["企业记录", enterpriseAnalysis.analysis.totalEnterprises],
+                      ["平均评分", enterpriseAnalysis.analysis.averageScore],
+                      ["完整记录", enterpriseAnalysis.analysis.completeRecords],
+                      ["需整改", enterpriseAnalysis.analysis.remediationRecords],
+                      ["打开预警", enterpriseAnalysis.analysis.openWarnings],
+                      ["Mock 指标", enterpriseAnalysis.analysis.mockAiIndicators],
+                    ].map(([label, value]) => (
+                      <article key={label} className="rounded-md border bg-white p-4">
+                        <p className="text-sm text-stone-500">{label}</p>
+                        <p className="mt-2 text-2xl font-semibold text-stone-950">
+                          {value}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                  <Table<GovernanceEnterpriseLedgerItem>
+                    rowKey="id"
+                    columns={enterpriseColumns}
+                    dataSource={enterpriseAnalysis.enterprises}
+                    pagination={{ pageSize: 8 }}
+                    scroll={{ x: 1280 }}
+                    locale={{ emptyText: "暂无企业治理记录。" }}
+                  />
+                  <Table
+                    rowKey="recordId"
+                    dataSource={enterpriseAnalysis.remediationFocus}
+                    pagination={false}
+                    columns={[
+                      {
+                        title: "治理记录",
+                        dataIndex: "recordTitle",
+                        key: "recordTitle",
+                      },
+                      {
+                        title: "整改重点",
+                        dataIndex: "items",
+                        key: "items",
+                        render: (
+                          items: Array<{ source: string; summary: string }>,
+                        ) => items.map((item) => item.summary).join("；"),
+                      },
+                    ]}
+                    locale={{ emptyText: "暂无整改重点。" }}
+                  />
+                </div>
+              ),
+            },
             {
               key: "records",
               label: "记录",
@@ -1187,6 +1706,40 @@ export function GovernanceWorkspacePage({
                   key: "propertyAddress",
                   label: "地址",
                   children: selectedRecord.normalizedFields.propertyAddress,
+                },
+                {
+                  key: "propertyNumber",
+                  label: "不动产编号",
+                  children:
+                    selectedRecord.normalizedFields.propertyNumber ??
+                    selectedRecord.normalizedFields.registrationNo,
+                },
+                {
+                  key: "propertyType",
+                  label: "资产类型",
+                  children: selectedRecord.normalizedFields.propertyType ?? "综合",
+                },
+                {
+                  key: "propertyAreaSqm",
+                  label: "面积",
+                  children: `${selectedRecord.normalizedFields.propertyAreaSqm ?? 0}㎡`,
+                },
+                {
+                  key: "tenantName",
+                  label: "承租方",
+                  children: selectedRecord.normalizedFields.tenantName ?? "自用",
+                },
+                {
+                  key: "leaseExpiryDate",
+                  label: "租赁到期",
+                  children:
+                    selectedRecord.normalizedFields.leaseExpiryDate ?? "未配置",
+                },
+                {
+                  key: "mockBoundary",
+                  label: "规则/Mock 边界",
+                  children:
+                    "估值、租金逾期、地图分布和 Mock AI 输出均为规则或演示数据。",
                 },
                 {
                   key: "riskNote",

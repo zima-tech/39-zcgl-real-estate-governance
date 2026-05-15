@@ -7,6 +7,9 @@ export const adminRoutes = {
   system: "/admin/system",
   expense: "/admin/expense",
   governance: "/admin/governance",
+  governanceAssetsPage: "/admin/governance/assets",
+  governanceEnterprisePage: "/admin/governance/enterprise",
+  governanceOverviewPage: "/admin/governance/overview",
   governanceScenariosPage: "/admin/governance/scenarios",
   governanceTemplatesPage: "/admin/governance/templates",
   governanceWarningsPage: "/admin/governance/warnings",
@@ -25,7 +28,10 @@ export const authApiRoutes = {
 } as const;
 
 export const adminApiRoutes = {
+  governanceAssets: "/api/admin/governance/assets",
   governanceDashboard: "/api/admin/governance/dashboard",
+  governanceEnterpriseAnalysis: "/api/admin/governance/enterprise-analysis",
+  governanceHomepageOverview: "/api/admin/governance/overview",
   governanceAiJob: (recordId: string) =>
     `/api/admin/governance/records/${recordId}/ai-jobs`,
   governanceIntake: "/api/admin/governance/intake",
